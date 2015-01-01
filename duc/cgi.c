@@ -257,8 +257,20 @@ void do_reindex(duc *duc, duc_graph *graph, duc_dir *dir)
 	struct duc_index_report *report;
 	report = duc_index(req, path, DUC_INDEX_XDEV); 
  	if(report == NULL) {
-		fprintf(stderr, "%s\n", duc_strerror(duc));
+		printf("%s\n", duc_strerror(duc));
 	}
+	
+	char *siz = duc_human_size(report->size_total);
+	char *s = duc_human_duration(report->time_start, report->time_stop);
+	printf("Indexed %lu files and %lu directories, (%sB total) in %s\n", 
+			(unsigned long)report->file_count, 
+			(unsigned long)report->dir_count,
+			siz,
+			s);	
+	free(s);
+	free(siz);
+
+	duc_index_report_free(report);
 
 	
 	printf("</body>");
