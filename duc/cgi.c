@@ -200,14 +200,44 @@ static void do_index(duc *duc, duc_graph *graph, duc_dir *dir)
 	} 
 	 
 
-	if(path) {
-		printf("<a href='%s?cmd=index&path=%s&'>", script, path);
-		printf("<img src='%s?cmd=image&path=%s' ismap='ismap'>\n", script, path);
-		printf("</a><br>");
-		printf("<br>Customized version of <a href='https://github.com/zevv/duc'>DUC</a> from ");
-		printf("<a href='https://github.com/digitalman2112/duc'>github:digitalman2112/duc</a><br>");
+	printf("<a href='%s?cmd=index&path=%s&'>", script, path);
+	printf("<img src='%s?cmd=image&path=%s' ismap='ismap'>\n", script, path);
+	printf("</a><br><table>");
+	
+	//this code is based on ls.c ls_one()	
+	size_t n = 0;
+	int max_size_len = 8; //this is calculated in ls_one
 
+	struct duc_dirent *e;
+
+	while( (e = duc_dir_read(dir)) != NULL) {
+		
+		
+		char *siz = duc_human_size(e->size);
+		printf("<tr><td align='right'>%*s</td>", max_size_len, siz);
+		free(siz);
+
+		if (e->mode == DUC_MODE_DIR) {
+			printf("<td><a href='%s?cmd=index&path=%s/%s&'>", script, path, e->name);
+			printf("%s</a></td>", e->name);
+		}
+		else {
+			printf("<td>%s</td>", e->name);
+		}
+		//printf("\n");
+			
+		
+		n++;
 	}
+
+
+
+
+	printf("</table>");	
+
+	printf("<br>Forked version of <a href='https://github.com/zevv/duc'>DUC</a> from ");
+	printf("<a href='https://github.com/digitalman2112/duc'>github:digitalman2112/duc</a><br>");
+
 	fflush(stdout);
 }
 
