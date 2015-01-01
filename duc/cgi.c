@@ -194,7 +194,7 @@ static void do_index(duc *duc, duc_graph *graph, duc_dir *dir)
 
 	if(path) {
 		printf("<a href='%s?cmd=index&path=%s&'>", script, path);
-		printf("<img src='%s?cmd=image&path=%s' ismap='ismap' width='100%%'>\n", script, path);
+		printf("<img src='%s?cmd=image&path=%s' ismap='ismap'>\n", script, path);
 		printf("</a><br>");
 		printf("<br>Customized version of <a href='https://github.com/zevv/duc'>DUC</a> from ");
 		printf("<a href='https://github.com/digitalman2112/duc'>github:digitalman2112/duc</a><br>");
@@ -236,14 +236,34 @@ void do_reindex(duc *duc, duc_graph *graph, duc_dir *dir)
 	if(!script) return;
 
   	char url[PATH_MAX];
-
         snprintf(url, sizeof url, "%s?cmd=index&path=%s", script, path);
+
+	char syscall[PATH_MAX];
+        snprintf(syscall, sizeof syscall, "duc index %s", path);
 
         //printf("<td><a href='%s'>%s</a></td>", url, report->path);
             
 
-	printf("<body>Starting reinindex: <a href='%s'>%s</a></body>", url ,path);
+	printf("<body>Starting reindex: <a href='%s'>%s</a><br><br>", url ,path);
 	fflush(stdout);
+	//int ret = system(syscall);
+	//fflush(stdout);
+	//printf("System call: %s returned %d<br>", syscall, ret);
+
+	duc_index_req *req = duc_index_req_new(duc);
+
+	duc_set_log_level(duc, 1);
+
+	struct duc_index_report *report;
+	report = duc_index(req, path, DUC_INDEX_XDEV); 
+ 	if(report == NULL) {
+		fprintf(stderr, "%s\n", duc_strerror(duc));
+	}
+
+	
+	printf("</body>");
+
+	
 
 
 
@@ -312,7 +332,7 @@ static int cgi_main(int argc, char **argv)
 	}
 
 	duc_graph *graph = duc_graph_new(duc);
-	duc_graph_set_size(graph, 2000);
+	duc_graph_set_size(graph, 1000);
 	duc_graph_set_max_level(graph, 5);
 
 	if(strcmp(cmd, "index") == 0) do_index(duc, graph, dir);
