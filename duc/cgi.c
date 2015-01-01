@@ -190,7 +190,7 @@ static void do_index(duc *duc, duc_graph *graph, duc_dir *dir)
 
 	if(path) {
 		printf("<a href='%s?cmd=index&path=%s&'>", script, path);
-		printf("<img src='%s?cmd=image&path=%s' ismap='ismap'>\n", script, path);
+		printf("<img src='%s?cmd=image&path=%s' ismap='ismap' width='100%%'>\n", script, path);
 		printf("</a><br>");
 	}
 	fflush(stdout);
@@ -270,8 +270,8 @@ static int cgi_main(int argc, char **argv)
 	}
 
 	duc_graph *graph = duc_graph_new(duc);
-	duc_graph_set_size(graph, 800);
-	duc_graph_set_max_level(graph, 4);
+	duc_graph_set_size(graph, 2000);
+	duc_graph_set_max_level(graph, 5);
 
 	if(strcmp(cmd, "index") == 0) do_index(duc, graph, dir);
 	if(strcmp(cmd, "image") == 0) do_image(duc, graph, dir);
