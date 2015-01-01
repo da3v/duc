@@ -192,6 +192,13 @@ static void do_index(duc *duc, duc_graph *graph, duc_dir *dir)
 		i++;
 	}
 	printf("</table>");
+	
+	//default to the first index if one not specified
+	if (!path) {
+		report = duc_get_report(duc, 0);
+		path = report->path;
+	} 
+	 
 
 	if(path) {
 		printf("<a href='%s?cmd=index&path=%s&'>", script, path);
