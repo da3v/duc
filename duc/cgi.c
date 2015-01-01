@@ -192,6 +192,8 @@ static void do_index(duc *duc, duc_graph *graph, duc_dir *dir)
 		printf("<a href='%s?cmd=index&path=%s&'>", script, path);
 		printf("<img src='%s?cmd=image&path=%s' ismap='ismap' width='100%%'>\n", script, path);
 		printf("</a><br>");
+		printf("<br>Customized version of DUC from github:digitalman2112/duc<br>");
+
 	}
 	fflush(stdout);
 }
