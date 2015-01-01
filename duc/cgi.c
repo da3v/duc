@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <libgen.h>
 #include <ctype.h>
+#include <signal.h>
 
 #include "cmd.h"
 #include "duc.h"
@@ -244,25 +245,32 @@ void do_reindex(duc *duc, duc_graph *graph, duc_dir *dir)
         //printf("<td><a href='%s'>%s</a></td>", url, report->path);
             
 
-	printf("<body>Starting reindex: <a href='%s'>%s</a><br><br>", url ,path);
+	printf("<body><h1>Starting reindex: <a href='%s'>%s</a></h1><br><br>", url ,path);
 	fflush(stdout);
+
+	printf("<pre>");
+
 	//int ret = system(syscall);
 	//fflush(stdout);
 	//printf("System call: %s returned %d<br>", syscall, ret);
 
 	duc_index_req *req = duc_index_req_new(duc);
 
-	duc_set_log_level(duc, 1);
 
+
+	//dup2(1, 2); //set stderror to the browser
+
+	signal(SIGABRT,SIG_IGN); //keep running if nav away from page
 	struct duc_index_report *report;
 	report = duc_index(req, path, DUC_INDEX_XDEV); 
  	if(report == NULL) {
 		printf("%s\n", duc_strerror(duc));
 	}
 	
+	printf("</pre>");
 	char *siz = duc_human_size(report->size_total);
 	char *s = duc_human_duration(report->time_start, report->time_stop);
-	printf("Indexed %lu files and %lu directories, (%sB total) in %s\n", 
+	printf("<h2>Indexed %lu files and %lu directories, (%sB total) in %s\n</h2>", 
 			(unsigned long)report->file_count, 
 			(unsigned long)report->dir_count,
 			siz,
@@ -272,7 +280,9 @@ void do_reindex(duc *duc, duc_graph *graph, duc_dir *dir)
 
 	duc_index_report_free(report);
 
-	
+	printf("<a href='%s?cmd=index&path=%s&'>", script, path);
+        printf("<img src='%s?cmd=image&path=%s' ismap='ismap'>\n", script, path);
+        printf("</a><br>");
 	printf("</body>");
 
 	
@@ -326,7 +336,11 @@ static int cgi_main(int argc, char **argv)
 		return -1;
         }
 
-        r = duc_open(duc, path_db, DUC_OPEN_RO);
+	duc_set_log_level(duc, DUC_LOG_DBG); //more info to apache logs
+
+
+
+        r = duc_open(duc, path_db, DUC_OPEN_RW); 
         if(r != DUC_OK) {
 		printf("Content-Type: text/plain\n\n");
                 printf("%s\n", duc_strerror(duc));
