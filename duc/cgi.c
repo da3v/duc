@@ -168,7 +168,10 @@ static void do_index(duc *duc, duc_graph *graph, duc_dir *dir)
 		strftime(ts_time, sizeof ts_time, "%H:%M:%S",tm);
 
 		char url[PATH_MAX];
+		char reindex_url[PATH_MAX];
+
 		snprintf(url, sizeof url, "%s?cmd=index&path=%s", script, report->path);
+		snprintf(reindex_url, sizeof reindex_url, "%s?cmd=reindex&path=%s", script, report->path);
 
 		char *siz = duc_human_size(report->size_total);
 
@@ -179,6 +182,7 @@ static void do_index(duc *duc, duc_graph *graph, duc_dir *dir)
 		printf("<td>%lu</td>", (unsigned long)report->dir_count);
 		printf("<td>%s</td>", ts_date);
 		printf("<td>%s</td>", ts_time);
+		printf("<td><a href='%s'>%s</a></td>", reindex_url, "reindex");
 		printf("</tr>\n");
 
 		free(siz);
@@ -192,7 +196,8 @@ static void do_index(duc *duc, duc_graph *graph, duc_dir *dir)
 		printf("<a href='%s?cmd=index&path=%s&'>", script, path);
 		printf("<img src='%s?cmd=image&path=%s' ismap='ismap' width='100%%'>\n", script, path);
 		printf("</a><br>");
-		printf("<br>Customized version of DUC from github:digitalman2112/duc<br>");
+		printf("<br>Customized version of <a href='https://github.com/zevv/duc'>DUC</a> from ");
+		printf("<a href='https://github.com/digitalman2112/duc'>github:digitalman2112/duc</a><br>");
 
 	}
 	fflush(stdout);
@@ -209,6 +214,41 @@ void do_image(duc *duc, duc_graph *graph, duc_dir *dir)
 	}
 }
 
+void do_reindex(duc *duc, duc_graph *graph, duc_dir *dir)
+{
+
+        printf(
+                "Content-Type: text/html\n"
+                "\n"
+                "<!DOCTYPE html>\n"
+                "<head>\n"
+                "<style>\n"
+                "body { font-family: 'arial', 'sans-serif'; font-size: 11px; }\n"
+                "table, thead, tbody, tr, td, th { font-size: inherit; font-family: inherit; }\n"
+                "#list { 100%%; }\n"
+                "#list td { padding-left: 5px; }\n"
+                "</style>\n"
+                "</head>\n"
+        );
+
+        char *path = cgi_get("path");
+	char *script = getenv("SCRIPT_NAME");
+	if(!script) return;
+
+  	char url[PATH_MAX];
+
+        snprintf(url, sizeof url, "%s?cmd=index&path=%s", script, path);
+
+        //printf("<td><a href='%s'>%s</a></td>", url, report->path);
+            
+
+	printf("<body>Starting reinindex: <a href='%s'>%s</a></body>", url ,path);
+	fflush(stdout);
+
+
+
+
+}
 
 
 static int cgi_main(int argc, char **argv)
@@ -276,6 +316,7 @@ static int cgi_main(int argc, char **argv)
 	duc_graph_set_max_level(graph, 5);
 
 	if(strcmp(cmd, "index") == 0) do_index(duc, graph, dir);
+	if(strcmp(cmd, "reindex") == 0) do_reindex(duc, graph, dir);
 	if(strcmp(cmd, "image") == 0) do_image(duc, graph, dir);
 
 	if(dir) duc_dir_close(dir);
