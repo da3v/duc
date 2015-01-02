@@ -39,7 +39,7 @@ static void print_escaped(const char *s)
 	}
 }
 
-static void dump(duc *duc, duc_dir *dir, int depth int num_entries)
+static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num)
 {
 	struct duc_dirent *e;
 
@@ -52,7 +52,7 @@ static void dump(duc *duc, duc_dir *dir, int depth int num_entries)
 			printf("' size='%ld' entries='%ld'>\n", (long)e->size, (long)duc_dir_get_count(dir));
 			duc_dir *dir_child = duc_dir_openent(dir, e);
 			if(dir_child) {
-				dump(duc, dir_child, depth + 1);
+				//dump(duc, dir_child, depth + 1, *entry_num);
 				indent(depth);
 				printf("</ent>\n");
 			}
@@ -60,8 +60,10 @@ static void dump(duc *duc, duc_dir *dir, int depth int num_entries)
 			indent(depth);
 			printf("<ent name='");
 			print_escaped(e->name);
-			printf("' size='%ld' />\n", (long)e->size);
+			printf("' size='%ld' entry='%ld' />\n", (long)e->size, (long)*entry_num);
+			(*entry_num)++;
 		}
+			
 	}
 }
 
@@ -142,7 +144,9 @@ static int dup_main(int argc, char **argv)
 	printf("<duc root='%s' size='%ld' file_count='%ld' dir_count='%ld'>\n", path, (long)duc_dir_get_size(dir), 
 		(long)filecount, (long)dircount);
 
-	dump(duc, dir, 1, filecount+dircount);
+	long* entry_num = 0;
+
+	dump(duc, dir, 1, entry_num);
 	printf("</duc>\n");
 
 	duc_dir_close(dir);
