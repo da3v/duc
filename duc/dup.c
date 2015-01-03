@@ -15,6 +15,19 @@
 #include "duc.h"
 #include "db.h"
 
+
+struct dup_options
+{
+	long minbytes;
+	int matchbysize;
+};
+
+struct dup_totals
+{
+	long long totalsize;
+	long totalmatches;
+};
+
 /*
 static void indent(int n)
 {
@@ -42,6 +55,7 @@ static void print_escaped(const char *s)
 
 */
 
+/*
 static struct duc_dir *getdirbyino (duc *duc, duc_dir *dir, ino_t ino, dev_t dev)
 {
 	//this approach isn't working - perhaps i should just store the pointer to the dir along with the dirent
@@ -69,7 +83,11 @@ static struct duc_dir *getdirbyino (duc *duc, duc_dir *dir, ino_t ino, dev_t dev
 	return 0;
 } 
 
-static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_dirent *(*entlist)[])
+*/
+
+
+
+static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_dirent *(*entlist)[], struct dup_options *options, struct dup_totals *totals)
 {
 	struct duc_dirent *e;
 
@@ -83,7 +101,7 @@ static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_
 			//fflush(stdout);
 			duc_dir *dir_child = duc_dir_openent(dir, e);
 			if(dir_child) {
-				dump(duc, dir_child, depth + 1, entry_num, entlist);
+				dump(duc, dir_child, depth + 1, entry_num, entlist, options, totals);
 				//indent(depth);
 				//printf("</ent>\n");
 			}
@@ -93,9 +111,8 @@ static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_
 			//print_escaped(e->name);
 			//printf("' inode='%ld' size='%ld' entry = '%ld'/>\n", (long) e->ino, (long)e->size, *entry_num);
 			(*entlist)[*entry_num]=e;
-			long minsize = 1000000;
 
-			if (e->size > minsize) {
+			if (e->size > options->minbytes) {
 				int i;
 				for (i=0;i<*entry_num;i++)
 				{
@@ -103,10 +120,12 @@ static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_
 					//char *cmphsize = duc_human_size(cmpsize);
 					
 					//HOW CAN I FIND THE MATCH PARENT DIR??
-
+					
+					int match = 0;
 			
 					if (((*entlist)[i]->size == e->size) && !strcmp((*entlist)[i]->name,e->name)) {
 
+						/*
 						//find the match parent dir - hardcoded root path atm
 						duc_dir *dirmatchroot = duc_dir_open(duc, "/data/video");
         					if(dir == NULL) {
@@ -115,19 +134,32 @@ static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_
         					}
     
 						struct duc_dir *dirmatch = getdirbyino(duc, dirmatchroot, (*entlist)[i]->ino, (*entlist)[i]->dev);    
-						//printf("%s", duc_dir_get_path(dirmatch));
-						//duc_dir_close(dirmatchroot);
+						printf("%s", duc_dir_get_path(dirmatch));
+						duc_dir_close(dirmatchroot);
 
                                         	printf("MATCH(SIZE+NAME): %s/%s(%s)  = %s/%s\n", duc_dir_get_path(dir) , e->name, duc_human_size(e->size),duc_dir_get_path(dirmatch),(*entlist)[i]->name);
-                                        	}
+                                        	*/
+						
+						printf("MATCH(SIZE+NAME): %s/%s (%s)  = unknown/%s\n", duc_dir_get_path(dir) , e->name, duc_human_size(e->size),(*entlist)[i]->name);
+						match = 1;
+						}
 					/*
 					else if (!strcmp((*entlist)[i]->name,e->name)) {
                                         	printf("MATCH(NAME): %ld:%s  :  %ld:%s\n", e->ino, e->name, (*entlist)[i]->ino, (*entlist)[i]->name);
                                         	}
 					*/
-					else if ((*entlist)[i]->size == e->size) {
-                                        	printf("MATCH(SIZE+NAME): %s/%s(%s)  =  %s\n", duc_dir_get_path(dir) , e->name, duc_human_size(e->size),(*entlist)[i]->name);
+					else if (options->matchbysize) {
+							if ((*entlist)[i]->size == e->size) {
+                                        		printf("MATCH(SIZE): %s/%s(%s)  =  %s\n", duc_dir_get_path(dir) , e->name, duc_human_size(e->size),(*entlist)[i]->name);
+							match = 1;
+							}
 						}
+
+					if (match) {
+						totals->totalmatches++;
+                                          	totals->totalsize+=e->size;
+                                        	printf ("totals: %ld, %s\n", totals->totalmatches, duc_human_size(totals->totalsize));
+					}
 					
 				}
 			}
@@ -144,12 +176,33 @@ static int dup_main(int argc, char **argv)
 	char *path_db = NULL;
 	duc_log_level loglevel = DUC_LOG_WRN;
 
+	
+	struct dup_options opts = {
+		0
+		};
+
+	
+	struct dup_totals tots = {
+		0, 0
+		};
+
+	struct dup_options *options = &opts;
+	struct dup_totals  *totals  = &tots;
+
+	
+	options->minbytes = 1000000;
+	options->matchbysize = 0;
+
+
+	totals->totalsize = 0;
+	totals->totalmatches = 0;
+ 
 	struct option longopts[] = {
 		{ "database",       required_argument, NULL, 'd' },
 		{ NULL }
 	};
 
-	while( ( c = getopt_long(argc, argv, "d:qv", longopts, NULL)) != EOF) {
+	while( ( c = getopt_long(argc, argv, "d:qvs", longopts, NULL)) != EOF) {
 
 		switch(c) {
 			case 'd':
@@ -160,6 +213,9 @@ static int dup_main(int argc, char **argv)
 				break;
 			case 'v':
 				if(loglevel < DUC_LOG_DMP) loglevel ++;
+				break;
+			case 's':
+				options->matchbysize = 1;
 				break;
 			default:
 				return -2;
@@ -231,7 +287,7 @@ static int dup_main(int argc, char **argv)
 	
 	//TODO: create struct with dup_count; bytes total, etc - pass & increment	
 
-	dump(duc, dir, 1, en, p);
+	dump(duc, dir, 1, en, p, options, totals);
 	//printf("</duc>\n");
 
 	//TODO:FREE MEMORY!
