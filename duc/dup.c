@@ -21,6 +21,7 @@ struct dup_options
 	long minbytes;
 	int matchbysize;
 	int matchbyname;
+	int folderscan;
 };
 
 struct dup_totals
@@ -99,7 +100,11 @@ static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_
 			if(dir_child) {
 				dump(duc, dir_child, depth + 1, entry_num, entlist, options, totals);
 			}
-		} else {
+		}
+		if ((e->mode == DUC_MODE_DIR) && (!options->folderscan)) {continue;}
+		if ((e->mode == DUC_MODE_REG) && (options->folderscan)) {break;}
+		
+		
 			(*entlist)[*entry_num]=e;
 
 			if (e->size > options->minbytes) {
@@ -108,34 +113,21 @@ static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_
 				//look for matches
 				for (i=0;i<*entry_num;i++)
 				{
-					//long cmpsize = (*entlist)[i]->size;
-					//char *cmphsize = duc_human_size(cmpsize);
-
 					//HOW CAN I FIND THE MATCH PARENT DIR??
 
 					int matchtype = 0;
 
 					if (((*entlist)[i]->size == e->size) && !strcmp((*entlist)[i]->name,e->name)) {
-
-						/*
-						//find the match parent dir - hardcoded root path atm
-						duc_dir *dirmatchroot = duc_dir_open(duc, "/data/video");
-        					if(dir == NULL) {
-                					fprintf(stderr, "%s\n", duc_strerror(duc));
-                					return;
-        					}
-
-						struct duc_dir *dirmatch = getdirbyino(duc, dirmatchroot, (*entlist)[i]->ino, (*entlist)[i]->dev);    
-						printf("%s", duc_dir_get_path(dirmatch));
-						duc_dir_close(dirmatchroot);
-
-                                        	printf("MATCH(SIZE+NAME): %s/%s(%s)  = %s/%s\n", duc_dir_get_path(dir) , e->name, duc_human_size(e->size),duc_dir_get_path(dirmatch),(*entlist)[i]->name);
-                                        	*/
-						printf("MATCH(SIZE+NAME): ");
+						if (e->mode == DUC_MODE_DIR) {
+							printf("MATCHDIR(SIZE+NAME): ");
+						}
+						else {
+							printf("MATCHFIL(SIZE+NAME): ");
+						}
 						matchtype = 1;
 						}
 					else if (options->matchbyname) {
-					
+
 							if (!strcmp((*entlist)[i]->name,e->name)) {
                                         		printf("MATCH(NAME): ");
                                         		matchtype = 2;
@@ -162,7 +154,7 @@ static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_
 				}
 			}
 			(*entry_num)++;
-		}
+		//}
 
 	}
 }
@@ -189,6 +181,7 @@ static int dup_main(int argc, char **argv)
 	options->minbytes = 0;
 	options->matchbysize = 0;
 	options->matchbyname = 0;
+	options->folderscan = 0;
 
 
 	totals->totalsize = 0;
@@ -200,7 +193,7 @@ static int dup_main(int argc, char **argv)
 		{ NULL }
 	};
 
-	while( ( c = getopt_long(argc, argv, "d:m:qvsn", longopts, NULL)) != EOF) {
+	while( ( c = getopt_long(argc, argv, "d:m:qvsnf", longopts, NULL)) != EOF) {
 
 		switch(c) {
 			case 'd':
@@ -219,6 +212,9 @@ static int dup_main(int argc, char **argv)
 				break;
 			case 'n':
 				options->matchbyname = 1;
+				break;
+			case 'f':
+				options->folderscan = 1;
 				break;
 			default:
 				return -2;
@@ -284,7 +280,9 @@ static int dup_main(int argc, char **argv)
 	struct duc_dirent *(*p)[] = &el;
 	
 	printf("Starting dup scan\n");
-	printf("Options: min bytes: %ld; \n", options->minbytes);
+	printf("Options:\n");
+	printf("Min bytes: %ld; \n", options->minbytes);
+	printf("Folder Scan: %d\n", options->folderscan);
 	printf("*********\n");
 
 		
@@ -312,6 +310,7 @@ struct cmd cmd_dup = {
 		"  -m, --megabytes=ARG     minimum filesize in megabytes to include in comparison\n"
 		"  -q, --quiet             quiet mode, do not print any warnings\n"
 		"  -n, --name              return name only matches\n"
+		"  -f, --folders           return folder (directory level) matches\n"
 		"  -s, --size              return size only matches\n",
 
 	.main = dup_main
