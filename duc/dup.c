@@ -116,8 +116,10 @@ static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_
 					//HOW CAN I FIND THE MATCH PARENT DIR??
 
 					int matchtype = 0;
+					struct duc_dirent *cmp;
+					cmp = (*entlist)[i];
 
-					if (((*entlist)[i]->size == e->size) && !strcmp((*entlist)[i]->name,e->name)) {
+					if ((cmp->size == e->size) && !strcmp(cmp->name,e->name)) {
 						if (e->mode == DUC_MODE_DIR) {
 							printf("MATCHDIR(SIZE+NAME): ");
 						}
@@ -128,13 +130,13 @@ static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_
 						}
 					else if (options->matchbyname) {
 
-							if (!strcmp((*entlist)[i]->name,e->name)) {
+							if (!strcmp(cmp->name,e->name)) {
                                         		printf("MATCH(NAME): ");
                                         		matchtype = 2;
 							}
 					}
 					else if (options->matchbysize) {
-							if ((*entlist)[i]->size == e->size) {
+							if (cmp->size == e->size) {
                                         		printf("MATCH(SIZE): ");
 							matchtype = 3;
 							}
@@ -146,8 +148,7 @@ static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_
                                           		totals->totalsize+=e->size;
 							}
 	                                       	printf("%s/%s (%s)  = unknown/%s (%s)\n", duc_dir_get_path(dir) , e->name, 
-								duc_human_size(e->size),(*entlist)[i]->name, duc_human_size((*entlist)[i]->size));
-						printf ("totals: %ld, %s\n", totals->totalmatches, duc_human_size(totals->totalsize));
+								duc_human_size(e->size),cmp->name, duc_human_size(cmp->size));
 						priormatch = 1;
 					}
 					
@@ -291,6 +292,8 @@ static int dup_main(int argc, char **argv)
 	//printf("</duc>\n");
 
 	//TODO:FREE MEMORY!
+	printf ("totals: %ld, %s\n", totals->totalmatches, duc_human_size(totals->totalsize));
+
 
 	duc_dir_close(dir);
 	duc_close(duc);
