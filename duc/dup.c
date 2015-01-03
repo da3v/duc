@@ -20,6 +20,7 @@ struct dup_options
 {
 	long minbytes;
 	int matchbysize;
+	int matchbyname;
 };
 
 struct dup_totals
@@ -94,35 +95,26 @@ static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_
 	while( (e = duc_dir_read(dir)) != NULL) {
 
 		if(e->mode == DUC_MODE_DIR) {
-			//indent(depth);
-			//printf("<ent type='dir' name='");
-			//print_escaped(e->name);
-			//printf("' inode='%ld' size='%ld' entries='%ld'>\n", (long) e->ino, (long)e->size, (long)duc_dir_get_count(dir));
-			//fflush(stdout);
 			duc_dir *dir_child = duc_dir_openent(dir, e);
 			if(dir_child) {
 				dump(duc, dir_child, depth + 1, entry_num, entlist, options, totals);
-				//indent(depth);
-				//printf("</ent>\n");
 			}
 		} else {
-			//indent(depth);
-			//printf("<ent name='");
-			//print_escaped(e->name);
-			//printf("' inode='%ld' size='%ld' entry = '%ld'/>\n", (long) e->ino, (long)e->size, *entry_num);
 			(*entlist)[*entry_num]=e;
 
 			if (e->size > options->minbytes) {
 				int i;
+				int priormatch = 0;
+				//look for matches
 				for (i=0;i<*entry_num;i++)
 				{
-					//long cmpsize = (*entlist)[i]->size;	
+					//long cmpsize = (*entlist)[i]->size;
 					//char *cmphsize = duc_human_size(cmpsize);
-					
+
 					//HOW CAN I FIND THE MATCH PARENT DIR??
-					
-					int match = 0;
-			
+
+					int matchtype = 0;
+
 					if (((*entlist)[i]->size == e->size) && !strcmp((*entlist)[i]->name,e->name)) {
 
 						/*
@@ -132,33 +124,39 @@ static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_
                 					fprintf(stderr, "%s\n", duc_strerror(duc));
                 					return;
         					}
-    
+
 						struct duc_dir *dirmatch = getdirbyino(duc, dirmatchroot, (*entlist)[i]->ino, (*entlist)[i]->dev);    
 						printf("%s", duc_dir_get_path(dirmatch));
 						duc_dir_close(dirmatchroot);
 
                                         	printf("MATCH(SIZE+NAME): %s/%s(%s)  = %s/%s\n", duc_dir_get_path(dir) , e->name, duc_human_size(e->size),duc_dir_get_path(dirmatch),(*entlist)[i]->name);
                                         	*/
-						
-						printf("MATCH(SIZE+NAME): %s/%s (%s)  = unknown/%s\n", duc_dir_get_path(dir) , e->name, duc_human_size(e->size),(*entlist)[i]->name);
-						match = 1;
+						printf("MATCH(SIZE+NAME): ");
+						matchtype = 1;
 						}
-					/*
-					else if (!strcmp((*entlist)[i]->name,e->name)) {
-                                        	printf("MATCH(NAME): %ld:%s  :  %ld:%s\n", e->ino, e->name, (*entlist)[i]->ino, (*entlist)[i]->name);
-                                        	}
-					*/
+					else if (options->matchbyname) {
+					
+							if (!strcmp((*entlist)[i]->name,e->name)) {
+                                        		printf("MATCH(NAME): ");
+                                        		matchtype = 2;
+							}
+					}
 					else if (options->matchbysize) {
 							if ((*entlist)[i]->size == e->size) {
-                                        		printf("MATCH(SIZE): %s/%s(%s)  =  %s\n", duc_dir_get_path(dir) , e->name, duc_human_size(e->size),(*entlist)[i]->name);
-							match = 1;
+                                        		printf("MATCH(SIZE): ");
+							matchtype = 3;
 							}
 						}
 
-					if (match) {
-						totals->totalmatches++;
-                                          	totals->totalsize+=e->size;
-                                        	printf ("totals: %ld, %s\n", totals->totalmatches, duc_human_size(totals->totalsize));
+					if (matchtype) {
+						if (!priormatch) {
+							totals->totalmatches++;
+                                          		totals->totalsize+=e->size;
+							}
+	                                       	printf("%s/%s (%s)  = unknown/%s (%s)\n", duc_dir_get_path(dir) , e->name, 
+								duc_human_size(e->size),(*entlist)[i]->name, duc_human_size((*entlist)[i]->size));
+						printf ("totals: %ld, %s\n", totals->totalmatches, duc_human_size(totals->totalsize));
+						priormatch = 1;
 					}
 					
 				}
@@ -177,9 +175,7 @@ static int dup_main(int argc, char **argv)
 	duc_log_level loglevel = DUC_LOG_WRN;
 
 	
-	struct dup_options opts = {
-		0
-		};
+	struct dup_options opts; 
 
 	
 	struct dup_totals tots = {
@@ -190,8 +186,9 @@ static int dup_main(int argc, char **argv)
 	struct dup_totals  *totals  = &tots;
 
 	
-	options->minbytes = 1000000;
+	options->minbytes = 0;
 	options->matchbysize = 0;
+	options->matchbyname = 0;
 
 
 	totals->totalsize = 0;
@@ -199,15 +196,18 @@ static int dup_main(int argc, char **argv)
  
 	struct option longopts[] = {
 		{ "database",       required_argument, NULL, 'd' },
+		{ "megabytes", 	    optional_argument, NULL, 'm' },
 		{ NULL }
 	};
 
-	while( ( c = getopt_long(argc, argv, "d:qvs", longopts, NULL)) != EOF) {
+	while( ( c = getopt_long(argc, argv, "d:m:qvsn", longopts, NULL)) != EOF) {
 
 		switch(c) {
 			case 'd':
 				path_db = optarg;
 				break;
+			case 'm':
+				options->minbytes = atol(optarg)*1000000;
 			case 'q':
 				loglevel = DUC_LOG_FTL;
 				break;
@@ -216,6 +216,9 @@ static int dup_main(int argc, char **argv)
 				break;
 			case 's':
 				options->matchbysize = 1;
+				break;
+			case 'n':
+				options->matchbyname = 1;
 				break;
 			default:
 				return -2;
@@ -267,11 +270,6 @@ static int dup_main(int argc, char **argv)
 	}
 	
 	long entcount = filecount + dircount;
-	//printf("<?xml version='1.0' encoding='UTF-8'?>\n");
-	//printf("<duc root='%s' size='%ld' file_count='%ld' dir_count='%ld'>\n", path, (long)duc_dir_get_size(dir), 
-	//	(long)filecount, (long)dircount);
-
-	//fflush(stdout);
 
 	//simpler way?
 	long e = 0;
@@ -285,7 +283,11 @@ static int dup_main(int argc, char **argv)
 
 	struct duc_dirent *(*p)[] = &el;
 	
-	//TODO: create struct with dup_count; bytes total, etc - pass & increment	
+	printf("Starting dup scan\n");
+	printf("Options: min bytes: %ld; \n", options->minbytes);
+	printf("*********\n");
+
+		
 
 	dump(duc, dir, 1, en, p, options, totals);
 	//printf("</duc>\n");
@@ -307,7 +309,11 @@ struct cmd cmd_dup = {
 	.usage = "[options] [PATH]",
 	.help = 
 		"  -d, --database=ARG      use database file ARG [~/.duc.db]\n"
-		"  -q, --quiet             quiet mode, do not print any warnings\n",
+		"  -m, --megabytes=ARG     minimum filesize in megabytes to include in comparison\n"
+		"  -q, --quiet             quiet mode, do not print any warnings\n"
+		"  -n, --name              return name only matches\n"
+		"  -s, --size              return size only matches\n",
+
 	.main = dup_main
 };
 
