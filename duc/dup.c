@@ -42,6 +42,33 @@ static void print_escaped(const char *s)
 
 */
 
+static struct duc_dir *getdirbyino (duc *duc, duc_dir *dir, ino_t ino, dev_t dev)
+{
+	//this approach isn't working - perhaps i should just store the pointer to the dir along with the dirent
+	struct duc_dirent *e;
+	struct duc_dir *ret;
+	printf ("%s\n", duc_dir_get_path(dir));
+        while( (e = duc_dir_read(dir)) != NULL) {
+
+                if(e->mode == DUC_MODE_DIR) {
+                        duc_dir *dir_child = duc_dir_openent(dir, e);
+                        if(dir_child) {
+                         	ret = getdirbyino(duc, dir_child, ino, dev);
+				if (ret) return ret;
+                        }
+                } else {
+			printf ("%ld,%ld,%ld,%ld\n", e->dev, e->ino, dev, ino);
+                        if ((e->ino == ino)&&(e->dev == dev)) {
+				printf ("MATCH:%ld,%ld", e->ino, ino);
+				fflush(stdout);
+				return dir;
+                        }
+			else return 0;
+                }
+	}
+	return 0;
+} 
+
 static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_dirent *(*entlist)[])
 {
 	struct duc_dirent *e;
@@ -79,7 +106,19 @@ static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_
 
 			
 					if (((*entlist)[i]->size == e->size) && !strcmp((*entlist)[i]->name,e->name)) {
-                                        	printf("MATCH(SIZE+NAME): %s/%s(%s)  =  %s\n", duc_dir_get_path(dir) , e->name, duc_human_size(e->size),(*entlist)[i]->name);
+
+						//find the match parent dir - hardcoded root path atm
+						duc_dir *dirmatchroot = duc_dir_open(duc, "/data/video");
+        					if(dir == NULL) {
+                					fprintf(stderr, "%s\n", duc_strerror(duc));
+                					return;
+        					}
+    
+						struct duc_dir *dirmatch = getdirbyino(duc, dirmatchroot, (*entlist)[i]->ino, (*entlist)[i]->dev);    
+						//printf("%s", duc_dir_get_path(dirmatch));
+						//duc_dir_close(dirmatchroot);
+
+                                        	printf("MATCH(SIZE+NAME): %s/%s(%s)  = %s/%s\n", duc_dir_get_path(dir) , e->name, duc_human_size(e->size),duc_dir_get_path(dirmatch),(*entlist)[i]->name);
                                         	}
 					/*
 					else if (!strcmp((*entlist)[i]->name,e->name)) {
