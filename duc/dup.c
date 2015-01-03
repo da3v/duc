@@ -87,7 +87,7 @@ static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_
                                         	}
 					*/
 					else if ((*entlist)[i]->size == e->size) {
-						printf("MATCH(SIZE): %ld:%s  :  %ld:%s\n", e->ino, e->name, (*entlist)[i]->ino, (*entlist)[i]->name);
+                                        	printf("MATCH(SIZE+NAME): %s/%s(%s)  =  %s\n", duc_dir_get_path(dir) , e->name, duc_human_size(e->size),(*entlist)[i]->name);
 						}
 					
 				}
@@ -190,6 +190,7 @@ static int dup_main(int argc, char **argv)
 
 	struct duc_dirent *(*p)[] = &el;
 	
+	//TODO: create struct with dup_count; bytes total, etc - pass & increment	
 
 	dump(duc, dir, 1, en, p);
 	//printf("</duc>\n");
