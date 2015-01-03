@@ -72,21 +72,24 @@ static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_
 				int i;
 				for (i=0;i<*entry_num;i++)
 				{
-					long cmpsize = (*entlist)[i]->size;	
-					char *cmphsize = duc_human_size(cmpsize);
+					//long cmpsize = (*entlist)[i]->size;	
+					//char *cmphsize = duc_human_size(cmpsize);
+					
+					//HOW CAN I FIND THE MATCH PARENT DIR??
+
 			
 					if (((*entlist)[i]->size == e->size) && !strcmp((*entlist)[i]->name,e->name)) {
-                                        	printf("MATCH(SIZE+NAME): %ld:%s:%ld  =  %ld:%s:%s\n", e->ino, e->name, (long) e->size, (*entlist)[i]->ino,(*entlist)[i]->name, cmphsize);
+                                        	printf("MATCH(SIZE+NAME): %s/%s(%s)  =  %s\n", duc_dir_get_path(dir) , e->name, duc_human_size(e->size),(*entlist)[i]->name);
                                         	}
 					/*
 					else if (!strcmp((*entlist)[i]->name,e->name)) {
                                         	printf("MATCH(NAME): %ld:%s  :  %ld:%s\n", e->ino, e->name, (*entlist)[i]->ino, (*entlist)[i]->name);
                                         	}
-				
+					*/
 					else if ((*entlist)[i]->size == e->size) {
 						printf("MATCH(SIZE): %ld:%s  :  %ld:%s\n", e->ino, e->name, (*entlist)[i]->ino, (*entlist)[i]->name);
 						}
-					*/
+					
 				}
 			}
 			(*entry_num)++;
