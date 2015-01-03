@@ -15,6 +15,7 @@
 #include "duc.h"
 #include "db.h"
 
+/*
 static void indent(int n)
 {
 	int i;
@@ -39,31 +40,58 @@ static void print_escaped(const char *s)
 	}
 }
 
-static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num)
+*/
+
+static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_dirent *(*entlist)[])
 {
 	struct duc_dirent *e;
 
 	while( (e = duc_dir_read(dir)) != NULL) {
 
 		if(e->mode == DUC_MODE_DIR) {
-			indent(depth);
-			printf("<ent type='dir' name='");
-			print_escaped(e->name);
-			printf("' size='%ld' entries='%ld'>\n", (long)e->size, (long)duc_dir_get_count(dir));
+			//indent(depth);
+			//printf("<ent type='dir' name='");
+			//print_escaped(e->name);
+			//printf("' inode='%ld' size='%ld' entries='%ld'>\n", (long) e->ino, (long)e->size, (long)duc_dir_get_count(dir));
+			//fflush(stdout);
 			duc_dir *dir_child = duc_dir_openent(dir, e);
 			if(dir_child) {
-				//dump(duc, dir_child, depth + 1, *entry_num);
-				indent(depth);
-				printf("</ent>\n");
+				dump(duc, dir_child, depth + 1, entry_num, entlist);
+				//indent(depth);
+				//printf("</ent>\n");
 			}
 		} else {
-			indent(depth);
-			printf("<ent name='");
-			print_escaped(e->name);
-			printf("' size='%ld' entry='%ld' />\n", (long)e->size, (long)*entry_num);
+			//indent(depth);
+			//printf("<ent name='");
+			//print_escaped(e->name);
+			//printf("' inode='%ld' size='%ld' entry = '%ld'/>\n", (long) e->ino, (long)e->size, *entry_num);
+			(*entlist)[*entry_num]=e;
+			long minsize = 1000000;
+
+			if (e->size > minsize) {
+				int i;
+				for (i=0;i<*entry_num;i++)
+				{
+					long cmpsize = (*entlist)[i]->size;	
+					char *cmphsize = duc_human_size(cmpsize);
+			
+					if (((*entlist)[i]->size == e->size) && !strcmp((*entlist)[i]->name,e->name)) {
+                                        	printf("MATCH(SIZE+NAME): %ld:%s:%ld  =  %ld:%s:%s\n", e->ino, e->name, (long) e->size, (*entlist)[i]->ino,(*entlist)[i]->name, cmphsize);
+                                        	}
+					/*
+					else if (!strcmp((*entlist)[i]->name,e->name)) {
+                                        	printf("MATCH(NAME): %ld:%s  :  %ld:%s\n", e->ino, e->name, (*entlist)[i]->ino, (*entlist)[i]->name);
+                                        	}
+				
+					else if ((*entlist)[i]->size == e->size) {
+						printf("MATCH(SIZE): %ld:%s  :  %ld:%s\n", e->ino, e->name, (*entlist)[i]->ino, (*entlist)[i]->name);
+						}
+					*/
+				}
+			}
 			(*entry_num)++;
 		}
-			
+
 	}
 }
 
@@ -140,14 +168,30 @@ static int dup_main(int argc, char **argv)
 		i++;
 	}
 	
-	printf("<?xml version='1.0' encoding='UTF-8'?>\n");
-	printf("<duc root='%s' size='%ld' file_count='%ld' dir_count='%ld'>\n", path, (long)duc_dir_get_size(dir), 
-		(long)filecount, (long)dircount);
+	long entcount = filecount + dircount;
+	//printf("<?xml version='1.0' encoding='UTF-8'?>\n");
+	//printf("<duc root='%s' size='%ld' file_count='%ld' dir_count='%ld'>\n", path, (long)duc_dir_get_size(dir), 
+	//	(long)filecount, (long)dircount);
 
-	long* entry_num = 0;
+	//fflush(stdout);
 
-	dump(duc, dir, 1, entry_num);
-	printf("</duc>\n");
+	//simpler way?
+	long e = 0;
+	long* en = &e;
+
+	struct duc_dirent *el[entcount];
+	int j;
+	for (j=0; j<entcount; j++) {
+		el[j] = malloc(sizeof(struct duc_dirent));
+	}
+
+	struct duc_dirent *(*p)[] = &el;
+	
+
+	dump(duc, dir, 1, en, p);
+	//printf("</duc>\n");
+
+	//TODO:FREE MEMORY!
 
 	duc_dir_close(dir);
 	duc_close(duc);
