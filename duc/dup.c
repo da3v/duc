@@ -30,6 +30,15 @@ struct dup_totals
 	long totalmatches;
 };
 
+struct duc_dirent2 {
+	char *name;                 /* File name */
+	off_t size;                 /* File size */
+	duc_dirent_mode mode;       /* File mode */
+	dev_t dev;                  /* ID of device containing file */
+	ino_t ino;                  /* inode number */
+	char *path;		    /* full path */
+};
+
 /*
 static void indent(int n)
 {
@@ -89,7 +98,7 @@ static struct duc_dir *getdirbyino (duc *duc, duc_dir *dir, ino_t ino, dev_t dev
 
 
 
-static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_dirent *(*entlist)[], struct dup_options *options, struct dup_totals *totals)
+static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_dirent2 *(*entlist)[], struct dup_options *options, struct dup_totals *totals)
 {
 	struct duc_dirent *e;
 
@@ -103,20 +112,34 @@ static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_
 		}
 		if ((e->mode == DUC_MODE_DIR) && (!options->folderscan)) {continue;}
 		if ((e->mode == DUC_MODE_REG) && (options->folderscan)) {break;}
-		
-		
-			(*entlist)[*entry_num]=e;
+
+			char fullpath[PATH_MAX];
+			strcpy (fullpath , duc_dir_get_path(dir));
+			strcat (fullpath , "/");
+			strcat (fullpath , e->name);
+			//printf ("fullpath:%s\n", fullpath);
+
+			//copy ent to ent2 to add path
+			struct duc_dirent2 *cmp = (*entlist)[*entry_num];
+
+			cmp->name = e->name;
+			cmp->size = e->size;
+			cmp->mode = e->mode;
+			cmp->dev  = e->dev;
+			cmp->ino  = e->ino;
+			cmp->path = strdup(fullpath);
+
+
 
 			if (e->size > options->minbytes) {
 				int i;
 				int priormatch = 0;
 				//look for matches
-				for (i=0;i<*entry_num;i++)
+				for (i=0;i< *entry_num;i++)
 				{
-					//HOW CAN I FIND THE MATCH PARENT DIR??
 
 					int matchtype = 0;
-					struct duc_dirent *cmp;
+					struct duc_dirent2 *cmp;
 					cmp = (*entlist)[i];
 
 					if ((cmp->size == e->size) && !strcmp(cmp->name,e->name)) {
@@ -147,18 +170,16 @@ static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_
 							totals->totalmatches++;
                                           		totals->totalsize+=e->size;
 							}
-	                                       	printf("%s/%s (%s)  = unknown/%s (%s)\n", duc_dir_get_path(dir) , e->name, 
-								duc_human_size(e->size),cmp->name, duc_human_size(cmp->size));
+	                                       	printf("%s/%s (%s)  = %s/%s (%s)\n", duc_dir_get_path(dir) , e->name, 
+								duc_human_size(e->size), cmp->path, cmp->name, duc_human_size(cmp->size));
 						priormatch = 1;
-					}
+					} 
 					
-				}
-			}
-			(*entry_num)++;
-		//}
-
-	}
-}
+				} //end for (iterate match array)
+			} //end if (minsize)	
+	 (*entry_num)++;
+	} //end while (entries to scan)
+} //end function
 
 
 static int dup_main(int argc, char **argv)
@@ -272,13 +293,14 @@ static int dup_main(int argc, char **argv)
 	long e = 0;
 	long* en = &e;
 
-	struct duc_dirent *el[entcount];
+	//switch to duc_malloc?
+	struct duc_dirent2 *el[entcount];
 	int j;
 	for (j=0; j<entcount; j++) {
-		el[j] = malloc(sizeof(struct duc_dirent));
+		el[j] = malloc(sizeof(struct duc_dirent2));
 	}
 
-	struct duc_dirent *(*p)[] = &el;
+	struct duc_dirent2 *(*p)[] = &el;
 	
 	printf("Starting dup scan\n");
 	printf("Options:\n");
