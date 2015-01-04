@@ -135,7 +135,7 @@ static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_
 					struct duc_dirent2 *cmp;
 					cmp = (*entlist)[i];
 
-					if ((cmp->size == e->size) && !strcmp(cmp->name,e->name)) {
+					if ((cmp->size == e->size) && !strcasecmp(cmp->name,e->name)) {
 						matchtype = 1;
 
 						if (e->mode == DUC_MODE_DIR) {
@@ -155,7 +155,7 @@ static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_
 					}
 
 					else if ((options->matchbyES) && (e->mode != DUC_MODE_DIR) && 
-							(!strcmp(get_filename_ext(cmp->name),get_filename_ext(e->name))) && (cmp->size == e->size)) {
+							(!strcasecmp(get_filename_ext(cmp->name),get_filename_ext(e->name))) && (cmp->size == e->size)) {
                                                 matchtype = 2;
                                 
                                                 if (e->mode == DUC_MODE_DIR) {
@@ -173,7 +173,7 @@ static void dump(duc *duc, duc_dir *dir, int depth, long *entry_num, struct duc_
                                                 }
                                         }
 
-					else if ((options->matchbyN) && (!strcmp(cmp->name,e->name))) {
+					else if ((options->matchbyN) && (!strcasecmp(cmp->name,e->name))) {
                                                 matchtype = 3;
 				
 						if (e->mode == DUC_MODE_DIR) {
@@ -340,7 +340,7 @@ static int dup_main(int argc, char **argv)
 		duc_index_report_free(report);
 		i++;
 	}
-	
+
 	long entcount = filecount + dircount;
 
 	//simpler way?
@@ -355,14 +355,7 @@ static int dup_main(int argc, char **argv)
 	}
 
 	struct duc_dirent2 *(*p)[] = &el;
-	
-	printf("Starting dup scan\n");
-	printf("Options:\n");
-	printf("Min bytes: %ld; \n", options->minbytes);
-	printf("Folder Scan: %d\n", options->folderscan);
-	printf("*********\n");
 
-		
 
 	dump(duc, dir, 1, en, p, options, totals);
 	//printf("</duc>\n");
