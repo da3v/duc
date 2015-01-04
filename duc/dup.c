@@ -261,8 +261,8 @@ static int dup_main(int argc, char **argv)
 
  
 	struct option longopts[] = {
-		{ "database",       required_argument, NULL, 'd' },
 		{ "megabytes", 	    optional_argument, NULL, 'm' },
+		{ "database",       required_argument, NULL, 'd' },
 		{ NULL }
 	};
 
@@ -302,6 +302,7 @@ static int dup_main(int argc, char **argv)
 	
 	char *path = ".";
 	if(argc > 0) path = argv[0];
+	printf("Starting duplicate scan on path: %s\n", path);
 	
 	/* Open duc context */
 	
@@ -310,6 +311,7 @@ static int dup_main(int argc, char **argv)
                 fprintf(stderr, "Error creating duc context\n");
                 return -1;
         }
+
 	duc_set_log_level(duc, loglevel);
 
 	int r = duc_open(duc, path_db, DUC_OPEN_RO);
@@ -327,9 +329,12 @@ static int dup_main(int argc, char **argv)
 	long filecount = 0;
 	long dircount = 0;
 
+
+	//TODO: get the number of entries another way to allow running on a child path...
+
 	struct duc_index_report *report;
 	int i = 0;
-
+	
 	while( (report = duc_get_report(duc, i)) != NULL) {
 
 		if (strcmp(path, report->path)==0) {
@@ -339,6 +344,11 @@ static int dup_main(int argc, char **argv)
 
 		duc_index_report_free(report);
 		i++;
+	}
+	
+	if (filecount == 0) {
+		fprintf(stderr, "ERROR: For now, duc dup can only be run on a path that is the root of an index...\n");
+		return (0);
 	}
 
 	long entcount = filecount + dircount;
